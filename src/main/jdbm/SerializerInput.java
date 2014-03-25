@@ -41,6 +41,10 @@ public class SerializerInput extends DataInputStream{
 	public <V> V readObject() throws ClassNotFoundException, IOException{
 		return (V) Serialization.readObject(this);
 	}
+
+    public <V> V readObject(ObjectResolver<V> resolver) throws ClassNotFoundException, IOException{
+        return (V) Serialization.readObject(this, resolver);
+    }
 	
 	public long readPackedLong() throws IOException{
 		return LongPacker.unpackLong(this);

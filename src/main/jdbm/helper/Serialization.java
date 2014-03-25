@@ -35,6 +35,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Vector;
 
+import jdbm.ObjectResolver;
 import jdbm.recman.BlockIo;
 
 /**
@@ -754,11 +755,11 @@ public final class Serialization
     /**
      * Deserialize an object from a byte array
      */
-    protected static Object deserializeNormal(DataInputStream buf )
+    protected static Object deserializeNormal(DataInputStream buf, ObjectResolver objectResolver )
         throws ClassNotFoundException, IOException
     {
 
-        ClassLoadingAwareObjectInputStream ois = new ClassLoadingAwareObjectInputStream( buf );
+        ClassLoadingAwareObjectInputStream ois = new ClassLoadingAwareObjectInputStream( buf, objectResolver );
         Object ret =  ois.readObject();
         if(buf.readByte()!=END_OF_NORMAL_SERIALIZATION)
         	throw new IOException("Wrong magic after serialization, maybe is Externalizable and wrong amount of bytes was read?");
@@ -766,6 +767,10 @@ public final class Serialization
     }
 
     public static Object readObject(DataInputStream is) throws IOException, ClassNotFoundException{
+        return readObject(is, null);
+    }
+
+    public static Object readObject(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException{
     	final int available = DEBUG?is.available():0;
 
     	Object ret = null;
@@ -778,7 +783,7 @@ public final class Serialization
 
     	switch(head){
     		case NULL:ret=  null;break;
-			case NORMAL:ret= deserializeNormal(is);break;
+			case NORMAL:ret= deserializeNormal(is, objectResolver);break;
 			case BOOLEAN_TRUE:ret= true;break;
 			case BOOLEAN_FALSE:ret= false;break;
 			case INTEGER_MINUS_1:ret= Integer.valueOf(-1);break;
@@ -836,33 +841,33 @@ public final class Serialization
 			case STRING_255:ret= deserializeString256Smaller(is);break;
 			case STRING:ret= deserializeString(is);break;
 			case STRING_EMPTY:ret= "";break;
-			case ARRAYLIST_255:ret= deserializeArrayList256Smaller(is);break;
-			case ARRAYLIST:ret= deserializeArrayList(is);break;
+			case ARRAYLIST_255:ret= deserializeArrayList256Smaller(is, objectResolver);break;
+			case ARRAYLIST:ret= deserializeArrayList(is, objectResolver);break;
 			case ARRAYLIST_PACKED_LONG:ret= deserializeArrayListPackedLong(is);break;
-			case ARRAY_OBJECT_255:ret= deserializeArrayObject256Smaller(is);break;
-			case ARRAY_OBJECT:ret= deserializeArrayObject(is);break;
+			case ARRAY_OBJECT_255:ret= deserializeArrayObject256Smaller(is, objectResolver);break;
+			case ARRAY_OBJECT:ret= deserializeArrayObject(is, objectResolver);break;
 			case ARRAY_OBJECT_PACKED_LONG:ret= deserializeArrayObjectPackedLong(is);break;
-			case LINKEDLIST_255:ret= deserializeLinkedList256Smaller(is);break;
-			case LINKEDLIST:ret= deserializeLinkedList(is);break;
-			case TREESET_255:ret= deserializeTreeSet256Smaller(is);break;
-			case TREESET:ret= deserializeTreeSet(is);break;
-			case HASHSET_255:ret= deserializeHashSet256Smaller(is);break;
-			case HASHSET:ret= deserializeHashSet(is);break;
-			case LINKEDHASHSET_255:ret= deserializeLinkedHashSet256Smaller(is);break;
-			case LINKEDHASHSET:ret= deserializeLinkedHashSet(is);break;
-			case VECTOR_255:ret= deserializeVector256Smaller(is);break;
-			case VECTOR:ret= deserializeVector(is);break;
-			case TREEMAP_255:ret= deserializeTreeMap256Smaller(is);break;
-			case TREEMAP:ret= deserializeTreeMap(is);break;
-			case HASHMAP_255:ret= deserializeHashMap256Smaller(is);break;
-			case HASHMAP:ret= deserializeHashMap(is);break;
-			case LINKEDHASHMAP_255:ret= deserializeLinkedHashMap256Smaller(is);break;
-			case LINKEDHASHMAP:ret= deserializeLinkedHashMap(is);break;
-			case HASHTABLE_255:ret= deserializeHashtable256Smaller(is);break;
-			case HASHTABLE:ret= deserializeHashtable(is);break;
-			case PROPERTIES_255:ret= deserializeProperties256Smaller(is);break;
-			case PROPERTIES:ret= deserializeProperties(is);break;
-			case CLASS:ret= deserializeClass(is);break;
+			case LINKEDLIST_255:ret= deserializeLinkedList256Smaller(is, objectResolver);break;
+			case LINKEDLIST:ret= deserializeLinkedList(is, objectResolver);break;
+			case TREESET_255:ret= deserializeTreeSet256Smaller(is, objectResolver);break;
+			case TREESET:ret= deserializeTreeSet(is, objectResolver);break;
+			case HASHSET_255:ret= deserializeHashSet256Smaller(is, objectResolver);break;
+			case HASHSET:ret= deserializeHashSet(is, objectResolver);break;
+			case LINKEDHASHSET_255:ret= deserializeLinkedHashSet256Smaller(is, objectResolver);break;
+			case LINKEDHASHSET:ret= deserializeLinkedHashSet(is, objectResolver);break;
+			case VECTOR_255:ret= deserializeVector256Smaller(is, objectResolver);break;
+			case VECTOR:ret= deserializeVector(is, objectResolver);break;
+			case TREEMAP_255:ret= deserializeTreeMap256Smaller(is, objectResolver);break;
+			case TREEMAP:ret= deserializeTreeMap(is, objectResolver);break;
+			case HASHMAP_255:ret= deserializeHashMap256Smaller(is, objectResolver);break;
+			case HASHMAP:ret= deserializeHashMap(is, objectResolver);break;
+			case LINKEDHASHMAP_255:ret= deserializeLinkedHashMap256Smaller(is, objectResolver);break;
+			case LINKEDHASHMAP:ret= deserializeLinkedHashMap(is, objectResolver);break;
+			case HASHTABLE_255:ret= deserializeHashtable256Smaller(is, objectResolver);break;
+			case HASHTABLE:ret= deserializeHashtable(is, objectResolver);break;
+			case PROPERTIES_255:ret= deserializeProperties256Smaller(is, objectResolver);break;
+			case PROPERTIES:ret= deserializeProperties(is, objectResolver);break;
+			case CLASS:ret= deserializeClass(is, objectResolver);break;
 			
 			
 			case ARRAY_INT_B_255: ret= deserializeArrayIntB255(is);break;
@@ -899,8 +904,8 @@ public final class Serialization
 	}
 
 
-	private static Class deserializeClass(DataInputStream is) throws IOException, ClassNotFoundException {
-		String className = (String) readObject(is);
+	private static Class deserializeClass(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
+		String className = (String) readObject(is, objectResolver);
 		Class cls = Class.forName(className);
 		return cls;
 	}
@@ -1048,11 +1053,11 @@ public final class Serialization
 		return b;
 	}
 	
-	private static Object[] deserializeArrayObject(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static Object[] deserializeArrayObject(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size =LongPacker.unpackInt(is);
 		Object[] s = new Object[size];
 		for(int i = 0; i<size;i++)
-			s[i] = readObject(is);
+			s[i] = readObject(is, objectResolver);
 		return s;
 	}
 	
@@ -1070,22 +1075,22 @@ public final class Serialization
 	}
 
 
-	private static Object[] deserializeArrayObject256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static Object[] deserializeArrayObject256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		Object[] s = new Object[size];
 		for(int i = 0; i<size;i++)
-			s[i] = readObject(is);
+			s[i] = readObject(is, objectResolver);
 		return s;
 	}
 
-	private static ArrayList<Object> deserializeArrayList(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static ArrayList<Object> deserializeArrayList(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);
 		ArrayList<Object> s = new ArrayList<Object>(size);
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 	
@@ -1105,229 +1110,229 @@ public final class Serialization
 		return s;
 	}
 
-	private static ArrayList<Object> deserializeArrayList256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static ArrayList<Object> deserializeArrayList256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		ArrayList<Object> s = new ArrayList<Object>(size);
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 
-	private static LinkedList<Object> deserializeLinkedList(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static LinkedList<Object> deserializeLinkedList(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);
 		LinkedList<Object> s = new LinkedList<Object>();
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 
-	private static LinkedList<Object> deserializeLinkedList256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static LinkedList<Object> deserializeLinkedList256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		LinkedList<Object> s = new LinkedList<Object>();
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 	
-	private static Vector<Object> deserializeVector(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static Vector<Object> deserializeVector(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);
 		Vector<Object> s = new Vector<Object>(size);
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 
-	private static Vector<Object> deserializeVector256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static Vector<Object> deserializeVector256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		Vector<Object> s = new Vector<Object>(size);
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 	
-	private static HashSet<Object> deserializeHashSet(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static HashSet<Object> deserializeHashSet(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);
 		HashSet<Object> s = new HashSet<Object>(size);
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 
-	private static HashSet<Object> deserializeHashSet256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static HashSet<Object> deserializeHashSet256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		HashSet<Object> s = new HashSet<Object>(size);
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 
-	private static LinkedHashSet<Object> deserializeLinkedHashSet(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static LinkedHashSet<Object> deserializeLinkedHashSet(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);
 		LinkedHashSet<Object> s = new LinkedHashSet<Object>(size);
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 
-	private static LinkedHashSet<Object> deserializeLinkedHashSet256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static LinkedHashSet<Object> deserializeLinkedHashSet256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		LinkedHashSet<Object> s = new LinkedHashSet<Object>(size);
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 	
 	
-	private static TreeSet<Object> deserializeTreeSet(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static TreeSet<Object> deserializeTreeSet(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);		
 		TreeSet<Object> s = new TreeSet<Object>();
-		Comparator comparator = (Comparator) readObject(is);
+		Comparator comparator = (Comparator) readObject(is, objectResolver);
 		if(comparator!=null)
 			s = new TreeSet<Object>(comparator);
 		
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 
-	private static TreeSet<Object> deserializeTreeSet256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static TreeSet<Object> deserializeTreeSet256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		TreeSet<Object> s = new TreeSet<Object>();
-		Object obj = readObject(is);
+		Object obj = readObject(is, objectResolver);
 		Comparator comparator = (Comparator) obj;
 		if(comparator!=null)
 			s = new TreeSet<Object>(comparator);
 		for(int i = 0; i<size;i++)
-			s.add(readObject(is));
+			s.add(readObject(is, objectResolver));
 		return s;
 	}
 
 	
-	private static TreeMap<Object,Object> deserializeTreeMap(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static TreeMap<Object,Object> deserializeTreeMap(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);		
 
 		TreeMap<Object,Object> s = new TreeMap<Object,Object>();
-		Comparator comparator = (Comparator) readObject(is);
+		Comparator comparator = (Comparator) readObject(is, objectResolver);
 		if(comparator!=null)
 			s = new TreeMap<Object,Object>(comparator);
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}
 
-	private static TreeMap<Object,Object> deserializeTreeMap256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static TreeMap<Object,Object> deserializeTreeMap256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		TreeMap<Object,Object> s = new TreeMap<Object,Object>();
-		Comparator comparator = (Comparator) readObject(is);
+		Comparator comparator = (Comparator) readObject(is, objectResolver);
 		if(comparator!=null)
 			s = new TreeMap<Object,Object>(comparator);
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}
 
 	
-	private static HashMap<Object,Object> deserializeHashMap(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static HashMap<Object,Object> deserializeHashMap(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);		
 
 		HashMap<Object,Object> s = new HashMap<Object,Object>(size);
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}
 
-	private static HashMap<Object,Object> deserializeHashMap256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static HashMap<Object,Object> deserializeHashMap256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		HashMap<Object,Object> s = new HashMap<Object,Object>(size);
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}
 	
 	
-	private static LinkedHashMap<Object,Object> deserializeLinkedHashMap(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static LinkedHashMap<Object,Object> deserializeLinkedHashMap(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);		
 
 		LinkedHashMap<Object,Object> s = new LinkedHashMap<Object,Object>(size);
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}
 
-	private static LinkedHashMap<Object,Object> deserializeLinkedHashMap256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static LinkedHashMap<Object,Object> deserializeLinkedHashMap256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		LinkedHashMap<Object,Object> s = new LinkedHashMap<Object,Object>(size);
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}
 
 	
-	private static Hashtable<Object,Object> deserializeHashtable(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static Hashtable<Object,Object> deserializeHashtable(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);		
 
 		Hashtable<Object,Object> s = new Hashtable<Object,Object>(size);
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}
 
-	private static Hashtable<Object,Object> deserializeHashtable256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static Hashtable<Object,Object> deserializeHashtable256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		Hashtable<Object,Object> s = new Hashtable<Object,Object>(size);
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}
 	
 	
-	private static Properties deserializeProperties(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static Properties deserializeProperties(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = LongPacker.unpackInt(is);		
 
 		Properties s = new Properties();
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}
 
-	private static Properties deserializeProperties256Smaller(DataInputStream is) throws IOException, ClassNotFoundException {
+	private static Properties deserializeProperties256Smaller(DataInputStream is, ObjectResolver objectResolver) throws IOException, ClassNotFoundException {
 		int size = is.read();
 		if(size <0)
     	    throw new EOFException();
 
 		Properties s = new Properties();
 		for(int i = 0; i<size;i++)
-			s.put(readObject(is),readObject(is));
+			s.put(readObject(is, objectResolver),readObject(is, objectResolver));
 		return s;
 	}	
 }

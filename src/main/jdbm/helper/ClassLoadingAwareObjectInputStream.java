@@ -16,6 +16,9 @@
  */
 package jdbm.helper;
 
+import jdbm.ObjectResolver;
+import jdbm.Serializer;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -28,8 +31,17 @@ public class ClassLoadingAwareObjectInputStream extends ObjectInputStream {
     private static final ClassLoader FALLBACK_CLASS_LOADER = ClassLoadingAwareObjectInputStream.class.getClassLoader();
     /** <p>Maps primitive type names to corresponding class objects.</p> */
     private static final HashMap<String, Class> primClasses = new HashMap<String, Class>(8, 1.0F);
-    public ClassLoadingAwareObjectInputStream(InputStream in) throws IOException {
+    private final ObjectResolver objectResolver;
+
+    public ClassLoadingAwareObjectInputStream(InputStream in, ObjectResolver objectResolver) throws IOException {
         super(in);
+        this.objectResolver = objectResolver;
+        if (objectResolver != null) enableResolveObject(true);
+    }
+
+    @Override
+    protected Object resolveObject(Object obj) throws IOException {
+        return objectResolver.resolveObject(obj);
     }
 
     protected Class resolveClass(ObjectStreamClass classDesc) throws IOException, ClassNotFoundException {

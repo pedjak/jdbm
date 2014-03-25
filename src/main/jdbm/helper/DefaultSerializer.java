@@ -75,4 +75,7 @@ public class DefaultSerializer
          }
      }
 
+    public Object resolveObject(Object obj) {
+        return obj;
+    }
 }
